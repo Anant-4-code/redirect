@@ -204,6 +204,121 @@
     }
     .dial-hint a { color: var(--accent); text-decoration: none; }
 
+    /* Add to list button */
+    #add-list-btn {
+      margin-top: 12px;
+      width: 100%;
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-family: 'Inter', sans-serif;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    #add-list-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(79,142,247,0.06);
+    }
+
+    /* Session list panel */
+    #session-list-panel {
+      width: 100%; max-width: 480px;
+      margin-top: 16px;
+      display: none;
+    }
+    #session-list-panel.visible { display: block; }
+    .session-list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .session-list-title {
+      font-size: 0.78rem; font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .session-list-badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.7rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 99px;
+    }
+    .session-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding: 20px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      opacity: 0.6;
+    }
+    .session-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 12px;
+      transition: border-color 0.2s;
+      animation: slideIn 0.25s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .session-item:hover { border-color: var(--accent); }
+    .session-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .session-info { flex: 1; min-width: 0; }
+    .session-name {
+      font-size: 0.88rem; font-weight: 600;
+      color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .session-number {
+      font-size: 0.78rem; color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 2px;
+    }
+    .session-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .session-dial-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 0.82rem; padding: 6px 12px;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+      display: flex; align-items: center; gap: 4px;
+      font-family: 'Inter', sans-serif;
+    }
+    .session-dial-btn:hover { transform: scale(1.05); }
+    .session-dial-btn:active { transform: scale(0.96); opacity: 0.85; }
+    .session-remove-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      font-size: 0.82rem; padding: 6px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .session-remove-btn:hover { border-color: #ef4444; color: #ef4444; }
+    .temp-note {
+      font-size: 0.73rem; color: var(--muted);
+      text-align: center; margin-top: 8px;
+      opacity: 0.55;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+
     /* Scroll indicator */
     .scroll-hint {
       margin-top: 56px;
@@ -402,6 +517,19 @@
         Powered by <strong>tel:</strong> protocol · works on mobile &amp; Windows Phone Link ·
         <a href="#how-it-works">learn more ↓</a>
       </div>
+      <button id="add-list-btn" onclick="addToSessionList()">＋ Add to session list</button>
+    </div>
+
+    <!-- Session list panel (temporary — clears on page close) -->
+    <div id="session-list-panel">
+      <div class="session-list-header">
+        <span class="session-list-title">Session Numbers</span>
+        <span class="session-list-badge" id="session-count">0</span>
+      </div>
+      <div id="session-list-items">
+        <div class="session-empty">No numbers added yet.<br/>Add one above to dial quickly.</div>
+      </div>
+      <div class="temp-note">⏱ Temporary · cleared when you close this tab</div>
     </div>
 
     <div class="scroll-hint">
@@ -661,6 +789,85 @@
   document.getElementById('phone-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') manualDial();
   });
+
+  // ─── SESSION LIST (temporary — in memory only, no storage) ─────
+  const sessionNumbers = [];
+
+  function addToSessionList() {
+    const raw = document.getElementById('phone-input').value.trim();
+    if (!raw) {
+      document.getElementById('phone-input').focus();
+      return;
+    }
+    const number = raw.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
+    if (!number) {
+      alert('Please enter a valid phone number.');
+      return;
+    }
+    // Avoid duplicates in this session
+    if (sessionNumbers.find(e => e.number === number)) {
+      flashInput('Already in list');
+      return;
+    }
+    sessionNumbers.push({ number, label: raw });
+    document.getElementById('phone-input').value = '';
+    renderSessionList();
+    flashInput('Added ✓');
+  }
+
+  function dialSessionNumber(number) {
+    // Opens a new tab with ?number= — triggers the calling screen + tel: dialer
+    // (Phone Link / mobile dialer), then the new tab auto-closes.
+    // This page stays open so your session list is preserved.
+    const url = window.location.origin + window.location.pathname
+                + '?number=' + encodeURIComponent(number);
+    window.open(url, '_blank');
+  }
+
+  function removeSessionNumber(index) {
+    sessionNumbers.splice(index, 1);
+    renderSessionList();
+  }
+
+  function renderSessionList() {
+    const panel  = document.getElementById('session-list-panel');
+    const wrap   = document.getElementById('session-list-items');
+    const badge  = document.getElementById('session-count');
+    badge.textContent = sessionNumbers.length;
+    panel.classList.toggle('visible', sessionNumbers.length > 0 || true);
+    if (sessionNumbers.length === 0) {
+      wrap.innerHTML = '<div class="session-empty">No numbers added yet.<br/>Add one above to dial quickly.</div>';
+      panel.classList.remove('visible');
+      return;
+    }
+    panel.classList.add('visible');
+    wrap.innerHTML = sessionNumbers.map((e, i) => `
+      <div class="session-item" id="sitem-${i}">
+        <div class="session-avatar">📞</div>
+        <div class="session-info">
+          <div class="session-name">${escHtml(e.label)}</div>
+          <div class="session-number">${escHtml(e.number)}</div>
+        </div>
+        <div class="session-actions">
+          <button class="session-dial-btn" onclick="dialSessionNumber('${escHtml(e.number)}')">📞 Dial</button>
+          <button class="session-remove-btn" onclick="removeSessionNumber(${i})" title="Remove">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function flashInput(msg) {
+    const btn = document.getElementById('add-list-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = msg;
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1400);
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
   // ─── COPY CODE BUTTONS ────────────────────────────────────────
   function copyCode(id) {
